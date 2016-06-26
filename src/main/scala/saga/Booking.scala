@@ -18,9 +18,6 @@ case class Car(model: String) extends Response
 case class Room(number: Int) extends Response
 case class Flight(seat: Int) extends Response
 case class Cancel(transactId: String) extends Response
-case class CancelCar(transactId: String, car: Car)
-case class CancelHotel(transactId: String, room: Room)
-case class CancelFlight(transactId: String, flight: Flight)
 
 class CarRental extends Actor with ActorLogging {
   def receive = {
@@ -33,8 +30,8 @@ class CarRental extends Actor with ActorLogging {
       } else {
         sender ! Cancel(transactId)
       }
-    case CancelCar(transactId, car) =>
-      log.info("Cancelled {}, {}", transactId, car)
+    case Cancel(transactId) =>
+      log.info("Cancelled {}", transactId)
   }
 }
 
@@ -54,8 +51,8 @@ class Hotel extends Actor with ActorLogging {
       } else {
         sender ! Cancel(transactId)
       }
-    case CancelHotel(transactId, room) =>
-      log.info("Cancelled {}, {}", transactId, room)
+    case Cancel(transactId) =>
+      log.info("Cancelled {}", transactId)
   }
 }
 
@@ -75,8 +72,8 @@ class Airline extends Actor with ActorLogging {
       } else {
         sender ! Cancel(transactId)
       }
-    case CancelFlight(transactId, flight) =>
-      log.info("Cancelled {}, {}", transactId, flight)
+    case Cancel(transactId) =>
+      log.info("Cancelled {}", transactId)
   }
 }
 
@@ -122,11 +119,11 @@ class TravelAgency(carRental: ActorRef, hotel: ActorRef, airline: ActorRef)
         val cancel = cancelled.head.asInstanceOf[Cancel]
         successes foreach {
           case car: Car =>
-            carRental ! CancelCar(cancel.transactId, car)
+            carRental ! Cancel(cancel.transactId)
           case room: Room =>
-            hotel ! CancelHotel(cancel.transactId, room)
+            hotel ! Cancel(cancel.transactId)
           case flight: Flight =>
-            airline ! CancelFlight(cancel.transactId, flight)
+            airline ! Cancel(cancel.transactId)
         }
         client ! cancel
         end
@@ -179,7 +176,7 @@ class TravelAgencySequential(carRental: ActorRef, hotel: ActorRef, airline: Acto
       airline ! ReserveFlight(transactId, reserve.date, reserve.from, reserve.to)
       context become waitForAirline(client, transactId, reserve, car, room)
     case cancel: Cancel =>
-      carRental ! CancelCar(cancel.transactId, car)
+      carRental ! cancel
       client ! cancel
       end
   }
@@ -195,8 +192,8 @@ class TravelAgencySequential(carRental: ActorRef, hotel: ActorRef, airline: Acto
       client ! Reserved(car, room, flight)
       end
     case cancel: Cancel =>
-      carRental ! CancelCar(cancel.transactId, car)
-      hotel ! CancelHotel(cancel.transactId, room)
+      carRental ! cancel
+      hotel ! cancel
       client ! cancel
       end
   }
